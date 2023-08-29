@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Microsoft.Unity.VisualStudio.Editor;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -86,12 +87,12 @@ public class GameController : MonoBehaviour
 
     private void CheckWin()
     {
-        int s1 = markedGrids[0] + markedGrids[1] + markedGrids[2];
-        int s2 = markedGrids[3] + markedGrids[4] + markedGrids[5];
-        int s3 = markedGrids[6] + markedGrids[7] + markedGrids[8];
-        int s4 = markedGrids[0] + markedGrids[3] + markedGrids[6];
-        int s5 = markedGrids[1] + markedGrids[4] + markedGrids[7];
-        int s6 = markedGrids[2] + markedGrids[5] + markedGrids[8];
+        int s1 = markedGrids[0] + markedGrids[3] + markedGrids[6];
+        int s2 = markedGrids[1] + markedGrids[4] + markedGrids[7];
+        int s3 = markedGrids[2] + markedGrids[5] + markedGrids[8];
+        int s4 = markedGrids[0] + markedGrids[1] + markedGrids[2];
+        int s5 = markedGrids[3] + markedGrids[4] + markedGrids[5];
+        int s6 = markedGrids[6] + markedGrids[7] + markedGrids[8];
         int s7 = markedGrids[0] + markedGrids[4] + markedGrids[8];
         int s8 = markedGrids[2] + markedGrids[4] + markedGrids[6];
 
