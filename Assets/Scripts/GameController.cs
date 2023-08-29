@@ -54,6 +54,11 @@ public class GameController : MonoBehaviour
         {
             markedGrids[i] = -100;
         }
+
+        for (int i = 0; i < winningLines.Length; i++)
+        {
+            winningLines[i].SetActive(false);
+        }
     }
 
     public void OnClickBtn(int no)
