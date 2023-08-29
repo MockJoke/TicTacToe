@@ -10,7 +10,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private Button oSideSelector;
     
     [Header("Grid")]
-    [SerializeField] private Button[] gridButtons;                  //playable buttons to input in game
+    [SerializeField] private Button[] gridButtons;                  //playable buttons for input in game
     [SerializeField] private CanvasGroup gridButtonsCanvas;          
     [SerializeField] private GameObject[] winningLines;             //lines to indicate winning pattern
     
@@ -30,7 +30,6 @@ public class GameController : MonoBehaviour
     [SerializeField] private GameObject xTurnIndicator;
     [SerializeField] private GameObject oTurnIndicator;
     
-    
     private int[] markedGrids;       //markings on grid to check player side
     private int whoseTurn;           //0: O & 1: X
     private int firstTurn;           //to decide which side will take the first turn
@@ -40,6 +39,7 @@ public class GameController : MonoBehaviour
     private int oScore = 0;
 
     private bool isNewGame = true;
+    private bool isGameOver = false;
 
     private void Awake()
     {
@@ -51,6 +51,9 @@ public class GameController : MonoBehaviour
     private void OnGameStart()
     {
         StartMenu.SetActive(true);
+        
+        xTurnIndicator.SetActive(false);
+        oTurnIndicator.SetActive(false);
     }
 
     public void OnSideSelection(int no)
@@ -77,6 +80,8 @@ public class GameController : MonoBehaviour
         {
             ResetTurn();
         }
+
+        isGameOver = false;
         gameOverPanel.SetActive(false);
         ResetGrid();
     }
@@ -103,19 +108,22 @@ public class GameController : MonoBehaviour
     {
         gridButtonsCanvas.interactable = true;
         
+        // Enable all grid buttons, reset all input text
         for (int i = 0; i < gridButtons.Length; i++)
         {
             gridButtons[i].interactable = true;
             gridButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = "";
         }
-
+        
         markedGrids = new int[gridButtons.Length];
-
+        
+        // Initialize mark grids with an invalid values
         for (int i = 0; i < markedGrids.Length; i++)
         {
             markedGrids[i] = -100;
         }
-
+        
+        // Disable all winning lines
         for (int i = 0; i < winningLines.Length; i++)
         {
             winningLines[i].SetActive(false);
@@ -125,6 +133,7 @@ public class GameController : MonoBehaviour
     public void OnClickBtn(int no)
     {
         gridButtons[no].GetComponentInChildren<TextMeshProUGUI>().text = whoseTurn == 0 ? "O" : "X";
+        // Once input is given, the button shouldn't be interactable to give input again
         gridButtons[no].interactable = false;
 
         markedGrids[no] = whoseTurn;
@@ -143,8 +152,11 @@ public class GameController : MonoBehaviour
                 Draw();
             }
         }
-        
-        ChangeTurn();
+
+        if (!isGameOver)
+        {
+            ChangeTurn();
+        }
     }
 
     private void ChangeTurn()
@@ -199,6 +211,11 @@ public class GameController : MonoBehaviour
 
     private void GameOver()
     {
+        isGameOver = true;
+        
+        xTurnIndicator.SetActive(false);
+        oTurnIndicator.SetActive(false);
+        
         gameOverPanel.SetActive(true);
         gridButtonsCanvas.interactable = false;
     }
