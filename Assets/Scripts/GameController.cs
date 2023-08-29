@@ -1,46 +1,106 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Microsoft.Unity.VisualStudio.Editor;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
-    [SerializeField] private Text[] buttonList;
-    [SerializeField] private Button[] gridButtons;              //playable buttons to input in game
-    [SerializeField] private CanvasGroup gridButtonsCanvas;          //playable buttons to input in game
-    [SerializeField] private GameObject[] winningLines;         //playable buttons to input in game
+    [Header("Start Menu")] 
+    [SerializeField] private GameObject StartMenu;
+    [SerializeField] private Button xSideSelector;
+    [SerializeField] private Button oSideSelector;
+    
+    [Header("Grid")]
+    [SerializeField] private Button[] gridButtons;                  //playable buttons to input in game
+    [SerializeField] private CanvasGroup gridButtonsCanvas;          
+    [SerializeField] private GameObject[] winningLines;             //lines to indicate winning pattern
+    
+    [Header("GameOver Panel")]
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameResultText;
+    
+    [Header("Buttons")]
     [SerializeField] private Button restartBtn;
     [SerializeField] private Button rematchBtn;
     [SerializeField] private Button quitBtn;
-
+    
+    [Header("Score Card")]
     [SerializeField] private GameObject ScoreCard;
     [SerializeField] private TextMeshProUGUI xScoreText;
     [SerializeField] private TextMeshProUGUI oScoreText;
     [SerializeField] private GameObject xTurnIndicator;
     [SerializeField] private GameObject oTurnIndicator;
     
-    private int[] markedGrids;       //playable buttons to input in game
-    private string playerSide;
-    private int whoseTurn;          //0: O & 1: X
-    private int turnCount = 0;      //counts the no of turns played
+    
+    private int[] markedGrids;       //markings on grid to check player side
+    private int whoseTurn;           //0: O & 1: X
+    private int firstTurn;           //to decide which side will take the first turn
+    private int turnCount = 0;       //counts the no of turns played
 
     private int xScore = 0;
     private int oScore = 0;
 
+    private bool isNewGame = true;
+
     private void Awake()
     {
-        Setup();
+        isNewGame = true;
+        
+        OnGameStart();
     }
 
+    private void OnGameStart()
+    {
+        StartMenu.SetActive(true);
+    }
+
+    public void OnSideSelection(int no)
+    {
+        firstTurn = no;
+        
+        StartMenu.SetActive(false);
+
+        if (isNewGame)
+        {
+            Setup();
+        }
+        else
+        {
+            ResetTurn();
+        }
+        
+        isNewGame = false;
+    }
+    
     private void Setup()
     {
-        whoseTurn = 0;
-        turnCount = 0;
+        if (isNewGame)
+        {
+            ResetTurn();
+        }
         gameOverPanel.SetActive(false);
+        ResetGrid();
+    }
+
+    private void ResetTurn()
+    {
+        whoseTurn = firstTurn;
+
+        if (whoseTurn == 0)
+        {
+            oTurnIndicator.SetActive(true);
+            xTurnIndicator.SetActive(false);
+        }
+        else
+        {
+            xTurnIndicator.SetActive(true);
+            oTurnIndicator.SetActive(false);
+        }
+        
+        turnCount = 0;
+    }
+
+    private void ResetGrid()
+    {
         gridButtonsCanvas.interactable = true;
         
         for (int i = 0; i < gridButtons.Length; i++)
@@ -92,10 +152,14 @@ public class GameController : MonoBehaviour
         if (whoseTurn == 0)
         {
             whoseTurn = 1;
+            xTurnIndicator.SetActive(true);
+            oTurnIndicator.SetActive(false);
         }
         else if (whoseTurn == 1)
         {
             whoseTurn = 0;
+            xTurnIndicator.SetActive(false);
+            oTurnIndicator.SetActive(true);
         }
     }
 
@@ -177,12 +241,14 @@ public class GameController : MonoBehaviour
 
     public void Restart()
     {
+        ResetTurn();
         Setup();
     }
 
     public void Rematch()
     {
         Setup();
+        OnGameStart();
     }
     
     public void Quit()
