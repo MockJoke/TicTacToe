@@ -1,119 +1,147 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
-    public Text[] buttonList;
-    public GameObject gameOverPanel;
-    public Text gameOverText;
+    [SerializeField] private Text[] buttonList;
+    [SerializeField] private Button[] gridButtons;              //playable buttons to input in game
+    [SerializeField] private CanvasGroup gridButtonsCanvas;          //playable buttons to input in game
+    [SerializeField] private GameObject[] winningLines;         //playable buttons to input in game
+    [SerializeField] private GameObject gameOverPanel;
+    [SerializeField] private TextMeshProUGUI gameResultText;
+    [SerializeField] private Button replayBtn;
+    [SerializeField] private Button quitBtn;
 
+    [SerializeField] private GameObject ScoreCard;
+    [SerializeField] private TextMeshProUGUI xScoreText;
+    [SerializeField] private TextMeshProUGUI oScoreText;
+    [SerializeField] private GameObject xTurnIndicator;
+    [SerializeField] private GameObject oTurnIndicator;
+    
+    private int[] markedGrids;       //playable buttons to input in game
     private string playerSide;
-    private int moveCount;
+    private int whoseTurn;          //0: O & 1: X
+    private int turnCount = 0;      //counts the no of turns played
 
-    // Start is called before the first frame update
-    void Start()
+    private int xScore = 0;
+    private int oScore = 0;
+
+    private void Awake()
     {
+        Setup();
+    }
+
+    private void Setup()
+    {
+        whoseTurn = 0;
+        turnCount = 0;
+        gameOverPanel.SetActive(false);
+        gridButtonsCanvas.interactable = true;
         
+        for (int i = 0; i < gridButtons.Length; i++)
+        {
+            gridButtons[i].interactable = true;
+            gridButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = "";
+        }
+
+        markedGrids = new int[gridButtons.Length];
+
+        for (int i = 0; i < markedGrids.Length; i++)
+        {
+            markedGrids[i] = -100;
+        }
     }
 
-    void Awake()
+    public void OnClickBtn(int no)
     {
-        SetGameControllerReferenceOnButtons();
-        playerSide = "X";
-        //gameOverPanel.SetActive(false);
-        moveCount = 0;
+        gridButtons[no].GetComponentInChildren<TextMeshProUGUI>().text = whoseTurn == 0 ? "O" : "X";
+        gridButtons[no].interactable = false;
+
+        markedGrids[no] = whoseTurn;
+        
+        turnCount++;
+
+        if (turnCount > 4)
+        {
+            CheckWin();
+        }
+        
+        ChangeTurn();
     }
 
-    void SetGameControllerReferenceOnButtons()
+    private void ChangeTurn()
     {
-        for (int i = 0; i < buttonList.Length; i++)
+        if (whoseTurn == 0)
         {
-            //buttonList[i].GetComponentInParent<Play>().SetGameControllerReference(this);
+            whoseTurn = 1;
+        }
+        else if (whoseTurn == 1)
+        {
+            whoseTurn = 0;
         }
     }
 
-    public string GetPlayerSide()
+    private void CheckWin()
     {
-        return playerSide;
+        int s1 = markedGrids[0] + markedGrids[1] + markedGrids[2];
+        int s2 = markedGrids[3] + markedGrids[4] + markedGrids[5];
+        int s3 = markedGrids[6] + markedGrids[7] + markedGrids[8];
+        int s4 = markedGrids[0] + markedGrids[3] + markedGrids[6];
+        int s5 = markedGrids[1] + markedGrids[4] + markedGrids[7];
+        int s6 = markedGrids[2] + markedGrids[5] + markedGrids[8];
+        int s7 = markedGrids[0] + markedGrids[4] + markedGrids[8];
+        int s8 = markedGrids[2] + markedGrids[4] + markedGrids[6];
+
+        var solutions = new int[] { s1, s2, s3, s4, s5, s6, s7, s8 };
+
+        for (int i = 0; i < solutions.Length; i++)
+        {
+            if (solutions[i] == 3 * whoseTurn)
+            {
+                GameOver();
+                DisplayWinner(i);
+                DisplayScore();
+            }
+        }
     }
 
-    public void EndTurn()
-    {
-        moveCount++;
-        if (buttonList[0].text == playerSide && buttonList[1].text == playerSide && buttonList[2].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[3].text == playerSide && buttonList[4].text == playerSide && buttonList[5].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[6].text == playerSide && buttonList[7].text == playerSide && buttonList[8].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[0].text == playerSide && buttonList[3].text == playerSide && buttonList[6].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[1].text == playerSide && buttonList[4].text == playerSide && buttonList[7].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[2].text == playerSide && buttonList[5].text == playerSide && buttonList[8].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[0].text == playerSide && buttonList[4].text == playerSide && buttonList[8].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (buttonList[2].text == playerSide && buttonList[4].text == playerSide && buttonList[6].text == playerSide)
-        {
-            GameOver();
-        }
-
-        if (moveCount >= 9)
-        {
-            SetGameOverText("It's a draw!");
-        }
-
-        ChangeSides();
-    }
-
-    void ChangeSides()
-    {
-        playerSide = (playerSide == "X") ? "O" : "X";
-    }
-
-    void GameOver()
-    {
-        for (int i = 0; i < buttonList.Length; i++)
-        {
-            buttonList[i].GetComponentInParent<Button>().interactable = false;
-        }
-
-        SetGameOverText(playerSide + " Wins!");
-    }
-
-    void SetGameOverText(string value)
+    private void GameOver()
     {
         gameOverPanel.SetActive(true);
-        gameOverText.text = value;
+        gridButtonsCanvas.interactable = false;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void DisplayWinner(int lineIndex)
     {
+        winningLines[lineIndex].SetActive(true);
         
+        SetGameOverText();
+    }
+
+    private void DisplayScore()
+    {
+        xScoreText.text = $"{xScore}";
+        oScoreText.text = $"{oScore}";
+    }
+    
+    void SetGameOverText()
+    {
+        string value;
+
+        if (whoseTurn == 0)
+        {
+            oScore++;
+            value = "O";
+        }
+        else
+        {
+            xScore++;
+            value = "X";
+        }
+        
+        gameResultText.text = $"Player {value} wins!";
     }
 }

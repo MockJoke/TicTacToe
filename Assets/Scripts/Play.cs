@@ -57,7 +57,6 @@ public class Play : MonoBehaviour
 
     public void EndGame()
     {
-       
         if (BtnListTxt[0]!="")
         {
             if (BtnListTxt[0] == BtnListTxt[1] && BtnListTxt[0] == BtnListTxt[2])
@@ -133,7 +132,6 @@ public class Play : MonoBehaviour
         {
             SetGameOverText(Winner + " Wins!");
         }
-        
     }
 
     void SetGameOverText(string value)
