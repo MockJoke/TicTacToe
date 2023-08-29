@@ -69,6 +69,14 @@ public class GameController : MonoBehaviour
         {
             CheckWin();
         }
+
+        if (turnCount >= 9)
+        {
+            if (!CheckWin())
+            {
+                Draw();
+            }
+        }
         
         ChangeTurn();
     }
@@ -85,7 +93,7 @@ public class GameController : MonoBehaviour
         }
     }
 
-    private void CheckWin()
+    private bool CheckWin()
     {
         int s1 = markedGrids[0] + markedGrids[3] + markedGrids[6];
         int s2 = markedGrids[1] + markedGrids[4] + markedGrids[7];
@@ -105,8 +113,18 @@ public class GameController : MonoBehaviour
                 GameOver();
                 DisplayWinner(i);
                 DisplayScore();
+                return true;
             }
         }
+
+        return false;
+    }
+
+    private void Draw()
+    {
+        GameOver();
+        
+        SetGameDrawText();
     }
 
     private void GameOver()
@@ -119,7 +137,7 @@ public class GameController : MonoBehaviour
     {
         winningLines[lineIndex].SetActive(true);
         
-        SetGameOverText();
+        SetGameWinnerText();
     }
 
     private void DisplayScore()
@@ -128,7 +146,7 @@ public class GameController : MonoBehaviour
         oScoreText.text = $"{oScore}";
     }
     
-    void SetGameOverText()
+    private void SetGameWinnerText()
     {
         string value;
 
@@ -144,5 +162,10 @@ public class GameController : MonoBehaviour
         }
         
         gameResultText.text = $"Player {value} wins!";
+    }
+
+    private void SetGameDrawText()
+    {
+        gameResultText.text = $"Game Draws!";
     }
 }
