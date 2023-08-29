@@ -13,7 +13,8 @@ public class GameController : MonoBehaviour
     [SerializeField] private GameObject[] winningLines;         //playable buttons to input in game
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameResultText;
-    [SerializeField] private Button replayBtn;
+    [SerializeField] private Button restartBtn;
+    [SerializeField] private Button rematchBtn;
     [SerializeField] private Button quitBtn;
 
     [SerializeField] private GameObject ScoreCard;
@@ -172,5 +173,20 @@ public class GameController : MonoBehaviour
     private void SetGameDrawText()
     {
         gameResultText.text = $"Game Draws!";
+    }
+
+    public void Restart()
+    {
+        Setup();
+    }
+
+    public void Rematch()
+    {
+        Setup();
+    }
+    
+    public void Quit()
+    {
+        Application.Quit();
     }
 }
