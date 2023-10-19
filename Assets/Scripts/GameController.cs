@@ -29,6 +29,10 @@ public class GameController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI oScoreText;
     [SerializeField] private GameObject xTurnIndicator;
     [SerializeField] private GameObject oTurnIndicator;
+
+    [HideInInspector] public bool IsAI = false;
+
+    private int playerSide;
     
     private int[] markedGrids;       //markings on grid to check player side
     private int whoseTurn;           //0: O & 1: X
@@ -59,6 +63,9 @@ public class GameController : MonoBehaviour
     public void OnSideSelection(int no)
     {
         firstTurn = no;
+
+        if (IsAI)
+            playerSide = no;
         
         StartMenu.SetActive(false);
 
@@ -156,6 +163,9 @@ public class GameController : MonoBehaviour
         if (!isGameOver)
         {
             ChangeTurn();
+                
+            if (IsAI && whoseTurn != playerSide)
+                ComputerTurn();
         }
     }
 
@@ -172,6 +182,22 @@ public class GameController : MonoBehaviour
             whoseTurn = 0;
             xTurnIndicator.SetActive(false);
             oTurnIndicator.SetActive(true);
+        }
+    }
+
+    private void ComputerTurn()
+    {
+        bool foundEmptySlot = false;
+
+        while (!foundEmptySlot)
+        {
+            int ran = Random.Range(0, 9);
+
+            if (gridButtons[ran].interactable)
+            {
+                gridButtons[ran].onClick.Invoke();
+                foundEmptySlot = true;
+            }
         }
     }
 
