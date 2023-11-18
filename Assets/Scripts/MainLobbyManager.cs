@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class LobbyManager : MonoBehaviour
+public class MainLobbyManager : MonoBehaviour
 {
     public void SelectGameMode(int no)
     {
@@ -11,7 +11,7 @@ public class LobbyManager : MonoBehaviour
                 SceneManager.LoadScene(sceneBuildIndex: 1);
                 break;
             case 1:
-                SceneManager.LoadScene(sceneBuildIndex: 2);
+                SceneManager.LoadScene(sceneBuildIndex: 4);
                 break;
         }
     }
