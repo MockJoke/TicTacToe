@@ -147,7 +147,7 @@ namespace Photon.Realtime
         /// As part of RoomInfo this can't be set.
         /// As part of a Room (which the player joined), the setter will update the server and all clients.
         /// </remarks>
-        public new byte MaxPlayers
+        public new int MaxPlayers
         {
             get
             {
@@ -158,18 +158,19 @@ namespace Photon.Realtime
             {
                 if (value != this.maxPlayers)
                 {
+                    byte maxPlayersPropValue = (byte)value;     // TODO: when the server accepts int typed MaxPlayers, remove this
                     if (!this.isOffline)
                     {
-                        this.LoadBalancingClient.OpSetPropertiesOfRoom(new Hashtable() { { GamePropertyKey.MaxPlayers, value } });
+                        this.LoadBalancingClient.OpSetPropertiesOfRoom(new Hashtable() { { GamePropertyKey.MaxPlayers, maxPlayersPropValue } });
                     }
-                }
 
-                this.maxPlayers = value;
+                    this.maxPlayers = maxPlayersPropValue;
+                }
             }
         }
 
         /// <summary>The count of players in this Room (using this.Players.Count).</summary>
-        public new byte PlayerCount
+        public new int PlayerCount
         {
             get
             {
@@ -274,8 +275,15 @@ namespace Photon.Realtime
         }
 
         /// <summary>
-        /// Gets if this room uses autoCleanUp to remove all (buffered) RPCs and instantiated GameObjects when a player leaves.
+        /// Gets if this room cleans up the event cache when a player (actor) leaves.
         /// </summary>
+        /// <remarks>
+        /// This affects which events joining players get.
+        ///
+        /// Set in room creation via RoomOptions.CleanupCacheOnLeave.
+        ///
+        /// Within PUN, auto cleanup of events means that cached RPCs and instantiated networked objects are deleted from the room.
+        /// </remarks>
         public bool AutoCleanUp
         {
             get
@@ -415,7 +423,7 @@ namespace Photon.Realtime
 
                 // invoking callbacks
                 this.LoadBalancingClient.InRoomCallbackTargets.OnRoomPropertiesUpdate(propertiesToSet);
-               
+
             }
             else
             {
@@ -519,11 +527,11 @@ namespace Photon.Realtime
             this.Players[player.ActorNumber] = player;
             player.RoomReference = this;
 
-            // while initializing the room, the players are not guaranteed to be added in-order
-            if (this.MasterClientId == 0 || player.ActorNumber < this.MasterClientId)
-            {
-                this.masterClientId = player.ActorNumber;
-            }
+            //// while initializing the room, the players are not guaranteed to be added in-order
+            //if (this.MasterClientId == 0 || player.ActorNumber < this.MasterClientId)
+            //{
+            //    this.masterClientId = player.ActorNumber;
+            //}
 
             return player;
         }
@@ -533,11 +541,14 @@ namespace Photon.Realtime
         /// Only useful when in a Room, as IDs are only valid per Room.
         /// </summary>
         /// <param name="id">ID to look for.</param>
+        /// <param name="findMaster">If true, the Master Client is returned for ID == 0.</param>
         /// <returns>The player with the ID or null.</returns>
-        public virtual Player GetPlayer(int id)
+        public virtual Player GetPlayer(int id, bool findMaster = false)
         {
+            int idToFind = (findMaster && id == 0) ? this.MasterClientId : id;
+
             Player result = null;
-            this.Players.TryGetValue(id, out result);
+            this.Players.TryGetValue(idToFind, out result);
 
             return result;
         }
@@ -556,17 +567,52 @@ namespace Photon.Realtime
         /// <returns>If the operation could be sent to the server.</returns>
         public bool ClearExpectedUsers()
         {
+            if (this.ExpectedUsers == null || this.ExpectedUsers.Length == 0)
+            {
+                return false;
+            }
+            return this.SetExpectedUsers(new string[0], this.ExpectedUsers);
+        }
+
+        /// <summary>
+        /// Attempts to update the expected users from the server's Slot Reservation list.
+        /// </summary>
+        /// <remarks>
+        /// Note that this operation can conflict with new/other users joining. They might be
+        /// adding users to the list of expected users before or after this client called SetExpectedUsers.
+        ///
+        /// This room's expectedUsers value will update, when the server sends a successful update.
+        ///
+        /// Internals: This methods wraps up setting the ExpectedUsers property of a room.
+        /// </remarks>
+        /// <param name="newExpectedUsers">The new array of UserIDs to be reserved in the room.</param>
+        /// <returns>If the operation could be sent to the server.</returns>
+        public bool SetExpectedUsers(string[] newExpectedUsers)
+        {
+            if (newExpectedUsers == null || newExpectedUsers.Length == 0)
+            {
+                this.LoadBalancingClient.DebugReturn(DebugLevel.ERROR, "newExpectedUsers array is null or empty, call Room.ClearExpectedUsers() instead if this is what you want.");
+                return false;
+            }
+            return this.SetExpectedUsers(newExpectedUsers, this.ExpectedUsers);
+        }
+
+        private bool SetExpectedUsers(string[] newExpectedUsers, string[] oldExpectedUsers)
+        {
             if (this.isOffline)
             {
                 return false;
             }
-            Hashtable props = new Hashtable();
-            props[GamePropertyKey.ExpectedUsers] = new string[0];
-            Hashtable expected = new Hashtable();
-            expected[GamePropertyKey.ExpectedUsers] = this.ExpectedUsers;
-            return this.LoadBalancingClient.OpSetPropertiesOfRoom(props, expected);
+            Hashtable gameProperties = new Hashtable(1);
+            gameProperties.Add(GamePropertyKey.ExpectedUsers, newExpectedUsers);
+            Hashtable expectedProperties = null;
+            if (oldExpectedUsers != null)
+            {
+                expectedProperties = new Hashtable(1);
+                expectedProperties.Add(GamePropertyKey.ExpectedUsers, oldExpectedUsers);
+            }
+            return this.LoadBalancingClient.OpSetPropertiesOfRoom(gameProperties, expectedProperties);
         }
-
 
         /// <summary>Returns a summary of this Room instance as string.</summary>
         /// <returns>Summary of this Room instance.</returns>

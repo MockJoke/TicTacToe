@@ -83,18 +83,18 @@ namespace Photon.Realtime
         {
             Type websocketType = null;
             #if (UNITY_XBOXONE || UNITY_GAMECORE) && !UNITY_EDITOR
-            websocketType = Type.GetType("ExitGames.Client.Photon.SocketNativeSource, PhotonRealtime", false);
+            websocketType = Type.GetType("ExitGames.Client.Photon.SocketNativeSource, Assembly-CSharp", false);
             if (websocketType == null)
             {
                 websocketType = Type.GetType("ExitGames.Client.Photon.SocketNativeSource, Assembly-CSharp-firstpass", false);
             }
             if (websocketType == null)
             {
-                websocketType = Type.GetType("ExitGames.Client.Photon.SocketNativeSource, Assembly-CSharp", false);
+                websocketType = Type.GetType("ExitGames.Client.Photon.SocketNativeSource, PhotonRealtime", false);
             }
-            if (websocketType == null)
+            if (websocketType != null)
             {
-                Debug.LogError("UNITY_XBOXONE is defined but peer could not find SocketNativeSource. Check your project files to make sure the native WSS implementation is available. Won't connect.");
+                this.SocketImplementationConfig[ConnectionProtocol.Udp] = websocketType;    // on Xbox, the native socket plugin supports UDP as well
             }
             #else
             // to support WebGL export in Unity, we find and assign the SocketWebTcp class (if it's in the project).
@@ -108,6 +108,12 @@ namespace Photon.Realtime
             {
                 websocketType = Type.GetType("ExitGames.Client.Photon.SocketWebTcp, Assembly-CSharp", false);
             }
+            #if UNITY_WEBGL
+            if (websocketType == null && this.DebugOut >= DebugLevel.WARNING)
+            {
+                this.Listener.DebugReturn(DebugLevel.WARNING, "SocketWebTcp type not found in the usual Assemblies. This is required as wrapper for the browser WebSocket API. Make sure to make the PhotonLibs\\WebSocket code available.");
+            }
+            #endif
             #endif
 
             if (websocketType != null)
@@ -300,6 +306,7 @@ namespace Photon.Realtime
             {
                 op[ParameterCode.Add] = opParams.ExpectedUsers;
             }
+
             if (opParams.OnGameServer)
             {
                 if (opParams.PlayerProperties != null && opParams.PlayerProperties.Count > 0)
@@ -348,7 +355,7 @@ namespace Photon.Realtime
                     op[ParameterCode.LobbyName] = opParams.Lobby.Name;
                     op[ParameterCode.LobbyType] = (byte)opParams.Lobby.Type;
                 }
-            } 
+            }
             else if (opParams.JoinMode == JoinMode.RejoinOnly)
             {
                 op[ParameterCode.JoinMode] = (byte)JoinMode.RejoinOnly; // changed from JoinMode.JoinOrRejoin
@@ -367,10 +374,7 @@ namespace Photon.Realtime
                 }
                 op[ParameterCode.Broadcast] = true; // broadcast actor properties
 
-                if (opParams.JoinMode == JoinMode.CreateIfNotExists)
-                {
-                    this.RoomOptionsToOpParameters(op, opParams.RoomOptions);
-                }
+                this.RoomOptionsToOpParameters(op, opParams.RoomOptions);
             }
 
             //this.Listener.DebugReturn(DebugLevel.INFO, "OpJoinRoom: " + SupportClass.DictionaryToString(op));
@@ -490,7 +494,8 @@ namespace Photon.Realtime
                     opParameters[ParameterCode.RoomName] = createRoomParams.RoomName;
                 }
 
-                this.RoomOptionsToOpParameters(opParameters, createRoomParams.RoomOptions, true);
+                // this operation is always only done on the Master Server, so we skip sending props (commented out line below)
+                //this.RoomOptionsToOpParameters(opParameters, createRoomParams.RoomOptions, true);
             }
 
             //this.Listener.DebugReturn(DebugLevel.INFO, "OpJoinRandomOrCreateRoom: " + SupportClass.DictionaryToString(opParameters, false));
@@ -1162,7 +1167,7 @@ namespace Photon.Realtime
         /// <summary>(32758) Join can fail if the room (name) is not existing (anymore). This can happen when players leave while you join.</summary>
         public const int GameDoesNotExist = 0x7FFF - 9;
 
-        /// <summary>(32757) Authorization on the Photon Cloud failed becaus the concurrent users (CCU) limit of the app's subscription is reached.</summary>
+        /// <summary>(32757) Authorization on the Photon Cloud failed because the concurrent users (CCU) limit of the app's subscription is reached.</summary>
         /// <remarks>
         /// Unless you have a plan with "CCU Burst", clients might fail the authentication step during connect.
         /// Affected client are unable to call operations. Please note that players who end a game and return
@@ -1195,8 +1200,11 @@ namespace Photon.Realtime
         public const int AuthenticationTicketExpired = 0x7FF1;
 
         /// <summary>
-        /// (32752) A server-side plugin (or webhook) failed to execute and reported an error. Check the OperationResponse.DebugMessage.
+        /// (32752) A server-side plugin or WebHook failed and reported an error. Check the OperationResponse.DebugMessage.
         /// </summary>
+        /// <remarks>A typical case is when a plugin prevents a user from creating or joining a room.
+        /// If this is prohibited, that reports to the client as a plugin error.<br/>
+        /// Same for WebHooks.</remarks>
         public const int PluginReportedError = 0x7FFF - 15;
 
         /// <summary>
@@ -1230,7 +1238,7 @@ namespace Photon.Realtime
         public const int JoinFailedFoundActiveJoiner = 32746; // 0x7FFF - 21,
 
         /// <summary>
-        /// (32745)  for SetProerties and Raisevent (if flag HttpForward is true) requests. Indicates the maximum allowd http requests per minute was reached.
+        /// (32745)  for SetProperties and RaiseEvent (if flag HttpForward is true) requests. Indicates the maximum allowed http requests per minute was reached.
         /// </summary>
         public const int HttpLimitReached = 32745; // 0x7FFF - 22,
 
@@ -1826,7 +1834,7 @@ namespace Photon.Realtime
         private bool isOpen = true;
 
         /// <summary>Max number of players that can be in the room at any time. 0 means "no limit".</summary>
-        public byte MaxPlayers;
+        public int MaxPlayers;
 
         /// <summary>Time To Live (TTL) for an 'actor' in a room. If a client disconnects, this actor is inactive first and removed after this timeout. In milliseconds.</summary>
         public int PlayerTtl;
@@ -2065,31 +2073,44 @@ namespace Photon.Realtime
     /// </summary>
     public enum CustomAuthenticationType : byte
     {
-        /// <summary>Use a custom authentification service. Currently the only implemented option.</summary>
+        /// <summary>Use a custom authentication service. Currently the only implemented option.</summary>
         Custom = 0,
 
-        /// <summary>Authenticates users by their Steam Account. Set auth values accordingly!</summary>
+        /// <summary>Authenticates users by their Steam Account. Set Steam's ticket as "ticket" via AddAuthParameter().</summary>
         Steam = 1,
 
-        /// <summary>Authenticates users by their Facebook Account. Set auth values accordingly!</summary>
+        /// <summary>Authenticates users by their Facebook Account.  Set Facebooks's tocken as "token" via AddAuthParameter().</summary>
         Facebook = 2,
 
-        /// <summary>Authenticates users by their Oculus Account and token.</summary>
+        /// <summary>Authenticates users by their Oculus Account and token. Set Oculus' userid as "userid" and nonce as "nonce" via AddAuthParameter().</summary>
         Oculus = 3,
 
-        /// <summary>Authenticates users by their PSN Account and token.</summary>
+        /// <summary>Authenticates users by their PSN Account and token on PS4. Set token as "token", env as "env" and userName as "userName" via AddAuthParameter().</summary>
+        PlayStation4 = 4,
+        [Obsolete("Use PlayStation4 or PlayStation5 as needed")]
         PlayStation = 4,
 
-        /// <summary>Authenticates users by their Xbox Account and XSTS token.</summary>
+        /// <summary>Authenticates users by their Xbox Account. Pass the XSTS token via SetAuthPostData().</summary>
         Xbox = 5,
 
-        /// <summary>Authenticates users by their HTC Viveport Account and user token. Set AuthGetParameters to "userToken=[userToken]"</summary>
+        /// <summary>Authenticates users by their HTC Viveport Account. Set userToken as "userToken" via AddAuthParameter().</summary>
         Viveport = 10,
 
-        /// <summary>Authenticates users by their NSA ID.</summary>
+        /// <summary>Authenticates users by their NSA ID. Set token  as "token" and appversion as "appversion" via AddAuthParameter(). The appversion is optional.</summary>
         NintendoSwitch = 11,
 
-        /// <summary>Disables custom authentification. Same as not providing any AuthenticationValues for connect (more precisely for: OpAuthenticate).</summary>
+        /// <summary>Authenticates users by their PSN Account and token on PS5. Set token as "token", env as "env" and userName as "userName" via AddAuthParameter().</summary>
+        PlayStation5 = 12,
+        [Obsolete("Use PlayStation4 or PlayStation5 as needed")]
+        Playstation5 = 12,
+
+        /// <summary>Authenticates users with Epic Online Services (EOS). Set token as "token" and ownershipToken as "ownershipToken" via AddAuthParameter(). The ownershipToken is optional.</summary>
+        Epic = 13,
+
+        /// <summary>Authenticates users with Facebook Gaming api. Set token as "token" via AddAuthParameter().</summary>
+        FacebookGaming = 15,
+
+        /// <summary>Disables custom authentication. Same as not providing any AuthenticationValues for connect (more precisely for: OpAuthenticate).</summary>
         None = byte.MaxValue
     }
 
