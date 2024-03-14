@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
-    [Header("Start Menu")] 
+    [Header("Start Menu")]
     [SerializeField] private GameObject StartMenu;
     [SerializeField] private Button xSideSelector;
     [SerializeField] private Button oSideSelector;
